@@ -33,6 +33,10 @@ readonly input_file="${codex_directory}/models_cache.json"
 readonly output_file="${codex_directory}/model-catalog-astra-350k.json"
 [[ -f "${input_file}" ]] || fail "找不到输入文件：${input_file}"
 
+# 本次运行只读取一次缓存，后续校验和生成均使用同一份内容。
+input_snapshot="$(< "${input_file}")" || fail "读取输入文件失败：${input_file}"
+readonly input_snapshot
+
 # 先校验模型标识和窗口字段，避免生成无法按模型区分的目录。
 if ! jq -e '
   type == "object"
@@ -43,14 +47,17 @@ if ! jq -e '
     and (.context_window | type == "number")
     and (.max_context_window | type == "number")
   )
-' "${input_file}" >/dev/null; then
+' <<< "${input_snapshot}" >/dev/null; then
   fail "输入文件结构无效：models 必须是数组，且每个模型必须包含字符串 slug 和数字上下文字段"
 fi
 
 if ! jq -e --arg astra_model "${astra_model}" '
   any(.models[]; .slug == $astra_model)
-' "${input_file}" >/dev/null; then
-  fail "输入缓存中未找到模型：${astra_model}"
+' <<< "${input_snapshot}" >/dev/null; then
+  available_models="$(jq -r '[.models[].slug] | join(", ")' <<< "${input_snapshot}")"
+  fail "输入缓存中未找到模型：${astra_model}
+缓存文件：${input_file}
+实际模型列表：${available_models:-（空）}"
 fi
 
 temporary_file="$(mktemp "${output_file}.tmp.XXXXXX")" \
@@ -82,7 +89,7 @@ if ! jq \
     | .auto_compact_token_limit = (.context_window * $compact_percent / 100 | floor)
     | .max_context_window = ([.max_context_window, (.context_window * 2)] | max)
   )
-' "${input_file}" > "${temporary_file}"; then
+' <<< "${input_snapshot}" > "${temporary_file}"; then
   fail "生成模型目录失败"
 fi
 
