@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-# 以脚本所在目录为 Codex 配置目录，便于直接放在 ~/.codex/ 中使用。
-readonly script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly input_file="${script_directory}/models_cache.json"
 readonly maximum_safe_target="4503599627370495"
 
 print_usage() {
@@ -47,11 +44,20 @@ if is_greater_than_safe_limit "${target_context_window}"; then
 fi
 
 command -v jq >/dev/null 2>&1 || fail "未找到 jq，请先安装 jq"
+
+# 优先使用自定义 Codex 目录，未设置时使用当前用户的 ~/.codex。
+[[ -n "${CODEX_HOME:-}" || -n "${HOME:-}" ]] \
+  || fail "未设置 HOME，请通过 CODEX_HOME 指定 Codex 配置目录"
+readonly codex_directory="${CODEX_HOME:-${HOME}/.codex}"
+[[ -d "${codex_directory}" ]] || fail "找不到 Codex 配置目录：${codex_directory}"
+
+# 输入缓存和生成结果均放在 Codex 配置目录，与脚本位置无关。
+readonly input_file="${codex_directory}/models_cache.json"
 [[ -f "${input_file}" ]] || fail "找不到输入文件：${input_file}"
 
 readonly target_max_context_window=$((target_context_window * 2))
 readonly context_window_in_thousands=$((target_context_window / 1000))
-readonly output_file="${script_directory}/model-catalog-${context_window_in_thousands}k.json"
+readonly output_file="${codex_directory}/model-catalog-${context_window_in_thousands}k.json"
 
 # 在更新前验证输入结构，避免字符串等异常值参与数字比较。
 if ! jq -e '

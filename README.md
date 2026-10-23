@@ -10,20 +10,26 @@
 
 ## 使用方法
 
-将 `generate-model-catalog.sh` 放在 `models_cache.json` 所在目录，然后传入目标上下文窗口大小：
+在本仓库目录直接运行脚本，传入目标上下文窗口大小：
 
 ```bash
 bash generate-model-catalog.sh 400000
 ```
 
-如果缓存位于 `~/.codex/`，可在本仓库目录执行：
+脚本按以下规则定位 Codex 配置目录：
+
+1. 环境变量 `CODEX_HOME` 非空时使用该目录。
+2. 否则使用当前用户主目录下的 `~/.codex/`。
+
+默认从 `~/.codex/models_cache.json` 读取缓存，并生成 `~/.codex/model-catalog-400k.json`。脚本可以放在任意位置，输入缓存和生成结果均位于选定的 Codex 配置目录。
+
+如果使用自定义目录，可通过环境变量指定，建议使用绝对路径：
 
 ```bash
-cp generate-model-catalog.sh ~/.codex/generate-model-catalog.sh
-bash ~/.codex/generate-model-catalog.sh 400000
+CODEX_HOME="/path/to/codex" bash generate-model-catalog.sh 400000
 ```
 
-此时会生成 `~/.codex/model-catalog-400k.json`。输入路径与输出路径始终以脚本所在目录为准，与运行命令时的当前目录无关。
+选定目录必须已经存在，并包含 `models_cache.json`；缺少目录或缓存时，错误消息会列出对应路径。相对路径形式的 `CODEX_HOME` 按运行命令时的当前目录解析。
 
 ## 生成规则
 
