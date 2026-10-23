@@ -45,9 +45,35 @@ CODEX_HOME="/path/to/codex" bash generate-model-catalog.sh 400000
 
 生成目录文件后，还需根据所用 Codex 版本完成相应的模型目录配置。调整目录中的数值本身不会改变模型服务端支持的上下文长度。
 
+## Astra 350k 专用目录
+
+运行专用脚本，无需传入参数：
+
+```bash
+bash astra_model_context_window_350k.sh
+```
+
+脚本沿用相同的目录定位规则，从 `CODEX_HOME` 或默认的 `~/.codex/` 读取 `models_cache.json`，生成 `model-catalog-astra-350k.json`。
+
+| 模型 | `context_window` | `auto_compact_token_limit` |
+| --- | ---: | ---: |
+| `gpt-6-astra`（精确匹配 `slug`） | 350000 | 332500 |
+| 其他模型 | 272000 | 258400 |
+
+窗口值和压缩阈值均精确覆盖原值，压缩阈值为窗口值的 95%。`max_context_window` 延续通用脚本的规则：至少为对应窗口值的两倍，原值更大时保留。其余字段和模型顺序保持原样。缓存中必须存在 `gpt-6-astra`，缺少时明确报错。
+
+脚本仅生成 JSON，保留源缓存和 `config.toml`。生成成功后，在 `config.toml` 顶层手动指定实际输出文件的绝对路径，例如：
+
+```toml
+model_catalog_json = "/absolute/path/to/model-catalog-astra-350k.json"
+```
+
+如果已有顶层 `model_context_window` 或 `model_auto_compact_token_limit`，需自行移除或注释这些全局覆盖项，让各模型使用目录中的值。修改目录引用后重启 Codex。目录加载方式参见 [Codex 官方说明](https://learn.chatgpt.com/docs/enterprise/roll-out-a-gateway#distribute-a-local-catalog)。
+
 ## 仓库文件
 
 - `generate-model-catalog.sh`：模型目录生成脚本。
+- `astra_model_context_window_350k.sh`：生成 Astra 350k、其他模型 272k 的专用目录，并设置对应的自动压缩阈值。
 - `.gitignore`：忽略编辑器文件、虚拟环境、个人配置、模型缓存及生成结果。
 - `.gitattributes`：保证 Bash 脚本使用 LF 换行。
 
