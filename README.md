@@ -70,10 +70,26 @@ model_catalog_json = "/absolute/path/to/model-catalog-astra-350k.json"
 
 如果已有顶层 `model_context_window` 或 `model_auto_compact_token_limit`，需自行移除或注释这些全局覆盖项，让各模型使用目录中的值。修改目录引用后重启 Codex。目录加载方式参见 [Codex 官方说明](https://learn.chatgpt.com/docs/enterprise/roll-out-a-gateway#distribute-a-local-catalog)。
 
+## 自定义 Astra 上下文窗口
+
+使用可传参的专用脚本设置 Astra 的窗口大小：
+
+```bash
+bash astra_model_context_window.sh 350000
+```
+
+- `gpt-6-astra`：`context_window` 精确设置为参数值，`auto_compact_token_limit` 使用整数运算计算 `floor(参数 × 95 / 100)`。
+- 其他模型：固定为 `context_window = 272000`、`auto_compact_token_limit = 258400`。
+
+输出文件名为 `model-catalog-astra-<参数/1000>k.json`，其中除以 `1000` 的结果向下取整；实际窗口值保留完整参数。例如，`350000` 和 `350001` 都生成 `model-catalog-astra-350k.json`，但各自的 Astra 窗口值分别为 `350000` 和 `350001`，压缩阈值均为 `332500`。同名文件会被覆盖，传入 `350000` 时与固定 350k 脚本使用相同的输出路径。
+
+参数要求与通用脚本一致：必须是不带前导零的正整数，最大为 `4503599627370495`。目录定位、最大窗口处理、字段保留和配置引用方式与固定 350k 脚本一致。
+
 ## 仓库文件
 
 - `generate-model-catalog.sh`：模型目录生成脚本。
 - `astra_model_context_window_350k.sh`：生成 Astra 350k、其他模型 272k 的专用目录，并设置对应的自动压缩阈值。
+- `astra_model_context_window.sh`：通过参数设置 Astra 窗口及向下取整的 95% 压缩阈值，其他模型保持 272k 和 258400。
 - `.gitignore`：忽略编辑器文件、虚拟环境、个人配置、模型缓存及生成结果。
 - `.gitattributes`：保证 Bash 脚本使用 LF 换行。
 
